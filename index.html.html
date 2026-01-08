@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Karina Beauty – Fluxo de Caixa</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#3b82f6">
+
+<style>
+:root{
+  --bg:#eaf3ff;
+  --card:#ffffff;
+  --text:#1e293b;
+  --sub:#475569;
+  --green:#22c55e;
+  --red:#ef4444;
+  --blue:#3b82f6;
+}
+body{
+  margin:0;
+  font-family:Segoe UI, Arial, sans-serif;
+  background:var(--bg);
+  color:var(--text);
+}
+.container{max-width:420px;margin:auto;padding:24px;}
+h1{text-align:center;font-size:22px;}
+.subtitle{text-align:center;font-size:13px;color:var(--sub);margin-bottom:16px;}
+.card{
+  background:var(--card);
+  padding:20px;
+  border-radius:18px;
+  box-shadow:0 10px 25px rgba(0,0,0,.08);
+}
+button{
+  width:100%;
+  padding:13px;
+  margin-top:8px;
+  border:none;
+  border-radius:12px;
+  font-size:14px;
+  cursor:pointer;
+}
+.servico{background:var(--blue);color:#fff;}
+.entrada{background:var(--green);color:#000;font-weight:600;}
+.saida{background:var(--red);color:#fff;}
+.apagar{background:#94a3b8;color:#fff;}
+
+.resumo{margin-top:14px;font-size:14px;}
+.historico{margin-top:14px;font-size:13px;color:#334155;}
+hr{border:none;border-top:1px solid #e2e8f0;margin:14px 0;}
+</style>
+</head>
+
+<body>
+<div class="container">
+<h1>Karina Beauty</h1>
+<div class="subtitle">Fluxo de Caixa</div>
+
+<div class="card">
+
+<strong>👁️ CÍLIOS</strong>
+<button class="servico" onclick="lancarServico('Volume Básico',145)">Volume Básico – R$ 145</button>
+<button class="servico" onclick="lancarServico('Manutenção Volume Básico',85)">Manutenção Volume Básico – R$ 85</button>
+<button class="servico" onclick="lancarServico('Efeito Rímel',120)">Efeito Rímel – R$ 120</button>
+<button class="servico" onclick="lancarServico('Manutenção Efeito Rímel',75)">Manutenção Efeito Rímel – R$ 75</button>
+<button class="servico" onclick="lancarServico('Efeito Fox',120)">Efeito Fox – R$ 120</button>
+<button class="servico" onclick="lancarServico('Manutenção Efeito Fox',75)">Manutenção Efeito Fox – R$ 75</button>
+
+<hr>
+
+<strong>💄 MAQUIAGEM</strong>
+<button class="servico" onclick="lancarServico('Maquiagem Simples',120)">Maquiagem Simples – R$ 120</button>
+<button class="servico" onclick="lancarServico('Maquiagem Elaborada',145)">Maquiagem Elaborada – R$ 145</button>
+
+<hr>
+
+<button class="entrada" onclick="entradaManual()">➕ Entrada manual</button>
+<button class="saida" onclick="saidaManual()">➖ Saída (gastos)</button>
+<button class="servico" onclick="mostrarRanking()">🏆 Ranking de serviços</button>
+<button class="servico" onclick="filtrarPorDia()">📅 Filtrar por dia</button>
+<button class="servico" onclick="exportarExcel()">📊 Exportar Excel</button>
+<button class="apagar" onclick="apagarUltimo()">Apagar último lançamento</button>
+
+<div class="resumo" id="resumo"></div>
+<div class="historico" id="historico"></div>
+
+</div>
+</div>
+
+<script>
+const ID="karina-beauty";
+
+function mesAtual(){
+  const d=new Date();
+  return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");
+}
+function mesAnterior(){
+  const d=new Date();
+  d.setMonth(d.getMonth()-1);
+  return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");
+}
+function hoje(){
+  return new Date().toLocaleDateString("pt-BR");
+}
+
+function saldoMes(mes){
+  const dados=JSON.parse(localStorage.getItem(ID+"-"+mes))||[];
+  let e=0,s=0;
+  dados.forEach(i=>i.tipo==="entrada"?e+=i.valor:s+=i.valor);
+  return e-s;
+}
+
+function backupAutomatico(){
+  const dados=localStorage.getItem(ID+"-"+mesAtual());
+  if(dados){
+    localStorage.setItem(ID+"-backup-"+new Date().toISOString(),dados);
+  }
+}
+
+function carregar(){
+  const dados=JSON.parse(localStorage.getItem(ID+"-"+mesAtual()))||[];
+  let entradas=0,saidas=0;
+  dados.forEach(i=>i.tipo==="entrada"?entradas+=i.valor:saidas+=i.valor);
+
+  let saldoInicial=saldoMes(mesAnterior());
+  if(saldoInicial<0) saldoInicial=0;
+  const saldoFinal=saldoInicial+entradas-saidas;
+
+  document.getElementById("resumo").innerHTML=
+    "💰 Saldo inicial: R$ "+saldoInicial.toFixed(2)+"<br>"+
+    "➕ Entradas: R$ "+entradas.toFixed(2)+"<br>"+
+    "➖ Saídas: R$ "+saidas.toFixed(2)+"<br>"+
+    "<strong>📊 Saldo atual: R$ "+saldoFinal.toFixed(2)+"</strong>";
+
+  document.getElementById("historico").innerHTML=
+    dados.map(i=>`• ${i.data} – ${i.desc} – ${i.pagamento} – R$ ${i.valor.toFixed(2)}`).join("<br>");
+}
+
+function salvarEntrada(valor,desc,data,pagamento){
+  let dados=JSON.parse(localStorage.getItem(ID+"-"+mesAtual()))||[];
+  dados.push({tipo:"entrada",valor,desc,data,pagamento});
+  localStorage.setItem(ID+"-"+mesAtual(),JSON.stringify(dados));
+  backupAutomatico();
+  carregar();
+}
+
+function lancarServico(desc,valor){
+  let data=prompt("Data (dd/mm/aaaa):",hoje());
+  let p=prompt("Forma de pagamento:\n1 - Dinheiro\n2 - Cartão\n3 - Pix");
+  if(p==="1")p="Dinheiro";
+  else if(p==="2")p="Cartão";
+  else if(p==="3")p="Pix";
+  else return;
+  salvarEntrada(valor,desc,data,p);
+}
+
+function entradaManual(){
+  let d=prompt("Descrição:");
+  let v=prompt("Valor:");
+  let data=prompt("Data (dd/mm/aaaa):",hoje());
+  let p=prompt("Forma de pagamento:\n1 - Dinheiro\n2 - Cartão\n3 - Pix");
+  if(p==="1")p="Dinheiro";
+  else if(p==="2")p="Cartão";
+  else if(p==="3")p="Pix";
+  else return;
+  if(d&&v) salvarEntrada(parseFloat(v),d,data,p);
+}
+
+function saidaManual(){
+  let d=prompt("Descrição do gasto:");
+  let v=prompt("Valor:");
+  let data=prompt("Data (dd/mm/aaaa):",hoje());
+  if(d&&v){
+    let dados=JSON.parse(localStorage.getItem(ID+"-"+mesAtual()))||[];
+    dados.push({tipo:"saida",valor:parseFloat(v),desc:d,data,pagamento:"-"});
+    localStorage.setItem(ID+"-"+mesAtual(),JSON.stringify(dados));
+    backupAutomatico();
+    carregar();
+  }
+}
+
+function apagarUltimo(){
+  let dados=JSON.parse(localStorage.getItem(ID+"-"+mesAtual()))||[];
+  if(!dados.length) return alert("Nada para apagar");
+  dados.pop();
+  localStorage.setItem(ID+"-"+mesAtual(),JSON.stringify(dados));
+  backupAutomatico();
+  carregar();
+}
+
+function mostrarRanking(){
+  const dados=JSON.parse(localStorage.getItem(ID+"-"+mesAtual()))||[];
+  const r={};
+  dados.forEach(i=>{
+    if(i.tipo==="entrada"){
+      r[i.desc]=r[i.desc]||{q:0,t:0};
+      r[i.desc].q++; r[i.desc].t+=i.valor;
+    }
+  });
+  let txt="🏆 RANKING DE SERVIÇOS\n\n";
+  Object.keys(r).sort((a,b)=>r[b].q-r[a].q).forEach((s,i)=>{
+    txt+=`${i+1}. ${s}\nQuantidade: ${r[s].q}\nTotal: R$ ${r[s].t.toFixed(2)}\n\n`;
+  });
+  alert(txt||"Sem dados.");
+}
+
+function filtrarPorDia(){
+  const d = prompt("Data (dd/mm/aaaa):");
+  if(!d) return;
+
+  const dados = JSON.parse(localStorage.getItem(ID+"-"+mesAtual())) || [];
+  const f = dados.filter(i => i.data === d);
+
+  if(!f.length){
+    alert("Nenhum lançamento nesse dia.");
+    return;
+  }
+
+  let entradas = 0;
+  let saidas = 0;
+  let txt = `📅 RESUMO DO DIA ${d}\n\n`;
+
+  f.forEach(i=>{
+    if(i.tipo === "entrada") entradas += i.valor;
+    if(i.tipo === "saida") saidas += i.valor;
+    txt += `• ${i.desc} – ${i.pagamento} – R$ ${i.valor.toFixed(2)}\n`;
+  });
+
+  txt += `\n➕ Entradas do dia: R$ ${entradas.toFixed(2)}`;
+  txt += `\n➖ Saídas do dia: R$ ${saidas.toFixed(2)}`;
+  txt += `\n💰 Saldo do dia: R$ ${(entradas-saidas).toFixed(2)}`;
+
+  alert(txt);
+}
+
+function exportarExcel(){
+  const dados=JSON.parse(localStorage.getItem(ID+"-"+mesAtual()))||[];
+  let csv="Data;Descrição;Tipo;Pagamento;Valor\n";
+  dados.forEach(i=>{
+    csv+=`${i.data};${i.desc};${i.tipo};${i.pagamento};${i.valor.toFixed(2)}\n`;
+  });
+  const blob=new Blob([csv],{type:"text/csv;charset=utf-8;"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");
+  a.href=url;
+  a.download=`KarinaBeauty-${mesAtual()}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+carregar();
+</script>
+</body>
+</html>
